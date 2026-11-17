@@ -1,0 +1,966 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>台灣暗棋 - 經典半盤象棋對戰</title>
+  <!-- Facebook / LINE 分享預覽設定 -->
+  <meta property="og:title" content="台灣暗棋 - 經典半盤象棋單機對戰！" />
+  <meta property="og:description" content="免下載、手機電腦點開即玩！支援炮翻山、兵吃帥標準台灣暗棋規則，快來挑戰電腦棋力！" />
+  <meta property="og:type" content="website" />
+  <style>
+    :root {
+      --bg-dark: #2c1e16;
+      --board-wood: #d9a76a;
+      --board-line: #5c3a1e;
+      --piece-face: #f7e6c4;
+      --piece-back: #2e6f40;
+      --gold: #f5c542;
+    }
+
+    * {
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: "Microsoft JhengHei", "PingFang TC", sans-serif;
+      background: radial-gradient(circle at center, #463125 0%, var(--bg-dark) 100%);
+      color: #fff;
+      height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      overflow: hidden;
+    }
+
+    header {
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 14px;
+      background: rgba(0, 0, 0, 0.45);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+    }
+
+    .title {
+      font-size: 17px;
+      font-weight: bold;
+      color: var(--gold);
+      letter-spacing: 1px;
+    }
+
+    .btn-small {
+      background: rgba(255, 255, 255, 0.15);
+      color: #fff;
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      padding: 5px 10px;
+      border-radius: 6px;
+      font-size: 13px;
+      cursor: pointer;
+    }
+
+    .btn-small:active {
+      background: rgba(255, 255, 255, 0.3);
+    }
+
+    .difficulty-select {
+      background: rgba(255, 255, 255, 0.12);
+      color: #fff;
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      padding: 5px 7px;
+      border-radius: 6px;
+      font-size: 13px;
+      cursor: pointer;
+      margin-right: 4px;
+    }
+
+    .difficulty-select option {
+      color: #1a1a1a;
+      background: #fff;
+    }
+
+    #status-panel {
+      width: 100%;
+      max-width: 560px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 12px;
+      margin-top: 4px;
+    }
+
+    .side-box {
+      background: rgba(0, 0, 0, 0.45);
+      border: 2px solid transparent;
+      border-radius: 8px;
+      padding: 5px 10px;
+      font-size: 13px;
+      min-width: 105px;
+      text-align: center;
+      transition: all 0.2s;
+    }
+
+    .side-box.active {
+      border-color: var(--gold);
+      box-shadow: 0 0 10px rgba(245, 197, 66, 0.5);
+      background: rgba(0, 0, 0, 0.75);
+    }
+
+    .side-red { color: #ff6b6b; font-weight: bold; }
+    .side-black { color: #a3d5ff; font-weight: bold; }
+
+    #turn-msg {
+      font-size: 14px;
+      font-weight: bold;
+      color: var(--gold);
+      text-align: center;
+      flex: 1;
+      padding: 0 6px;
+    }
+
+    #board-wrapper {
+      flex: 1;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      width: 100%;
+      padding: 6px 12px 12px;
+    }
+
+    #board {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      grid-template-rows: repeat(8, 1fr);
+      gap: 4px;
+      background: var(--board-line);
+      border: 6px solid #754c29;
+      border-radius: 10px;
+      padding: 4px;
+      box-shadow: 0 10px 28px rgba(0, 0, 0, 0.65);
+      width: 100%;
+      max-width: 340px;
+      height: 100%;
+      max-height: 620px;
+      aspect-ratio: 4 / 8;
+    }
+
+    .cell {
+      background: var(--board-wood);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      position: relative;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    .cell.hint-move::after {
+      content: "";
+      width: 16px;
+      height: 16px;
+      background: rgba(46, 160, 67, 0.75);
+      border-radius: 50%;
+      box-shadow: 0 0 6px #2ea043;
+    }
+
+    .cell.hint-capture {
+      background: #e89b74;
+      box-shadow: inset 0 0 10px #d92b2b;
+    }
+
+    .cell.last-action {
+      box-shadow: inset 0 0 0 3px rgba(245, 197, 66, 0.85);
+    }
+
+    .piece {
+      width: 84%;
+      height: 84%;
+      border-radius: 50%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-weight: bold;
+      font-size: clamp(20px, 5vw, 28px);
+      box-shadow: 0 3px 6px rgba(0, 0, 0, 0.45), inset 0 2px 3px rgba(255, 255, 255, 0.5);
+      transition: transform 0.12s ease;
+    }
+
+    .piece.hidden {
+      background: radial-gradient(circle at 35% 35%, #3d8c52, var(--piece-back));
+      border: 2px solid #1d4729;
+    }
+
+    .piece.hidden::after {
+      content: "";
+      width: 68%;
+      height: 68%;
+      border: 1.5px dashed rgba(255, 255, 255, 0.35);
+      border-radius: 50%;
+    }
+
+    .piece.revealed {
+      background: radial-gradient(circle at 35% 35%, #fff6e0, var(--piece-face));
+      border: 2px solid #b88b50;
+    }
+
+    .piece.red {
+      color: #c91e1e;
+      text-shadow: 0 1px 0 rgba(255, 255, 255, 0.6);
+    }
+
+    .piece.black {
+      color: #1c1c1c;
+      text-shadow: 0 1px 0 rgba(255, 255, 255, 0.6);
+    }
+
+    .piece.selected {
+      transform: scale(1.1);
+      box-shadow: 0 0 14px #2b8cff, 0 4px 8px rgba(0, 0, 0, 0.5);
+      border: 2.5px solid #2b8cff;
+    }
+
+    #captured-bar {
+      width: 100%;
+      max-width: 560px;
+      padding: 6px 12px 10px;
+      background: rgba(0, 0, 0, 0.4);
+      border-top: 1px solid rgba(255, 255, 255, 0.12);
+      font-size: 12px;
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .cap-list {
+      flex: 1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      color: #ddd;
+    }
+
+    #modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.78);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 100;
+      padding: 20px;
+    }
+
+    .modal-box {
+      background: #231812;
+      border: 2px solid var(--gold);
+      border-radius: 14px;
+      padding: 24px;
+      width: 100%;
+      max-width: 340px;
+      text-align: center;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.7);
+    }
+
+    .modal-box h2 {
+      margin: 0 0 12px;
+      color: var(--gold);
+    }
+
+    .btn-restart {
+      background: var(--gold);
+      color: #1a1a1a;
+      border: none;
+      padding: 10px 24px;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+      width: 100%;
+      margin-top: 12px;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="title">♟ 台灣暗棋</div>
+    <div>
+      <select id="difficulty" class="difficulty-select" onchange="changeDifficulty()" aria-label="電腦難度">
+        <option value="easy">簡單</option>
+        <option value="normal" selected>普通</option>
+        <option value="hard">困難</option>
+      </select>
+      <button class="btn-small" onclick="showRules()">規則說明</button>
+      <button class="btn-small" onclick="initGame()">重新開局</button>
+    </div>
+  </header>
+
+  <div id="status-panel">
+    <div class="side-box" id="box-human">
+      <div>你：<span id="human-color">未定</span></div>
+      <div id="human-left">存活 16 子</div>
+    </div>
+    <div id="turn-msg">請點擊任一暗棋翻牌</div>
+    <div class="side-box" id="box-bot">
+      <div>電腦：<span id="bot-color">未定</span></div>
+      <div id="bot-left">存活 16 子</div>
+    </div>
+  </div>
+
+  <div id="board-wrapper">
+    <div id="board"></div>
+  </div>
+
+  <div id="captured-bar">
+    <div class="cap-list" id="cap-by-human">你吃掉：無</div>
+    <div class="cap-list" id="cap-by-bot" style="text-align:right">電腦吃掉：無</div>
+  </div>
+
+  <div id="modal-overlay">
+    <div class="modal-box">
+      <h2 id="modal-title">對局結束</h2>
+      <p id="modal-desc" style="font-size:15px; line-height:1.5; color:#eee;"></p>
+      <button class="btn-restart" onclick="initGame()">再戰一局</button>
+    </div>
+  </div>
+
+  <script>
+    var ROWS = 8;
+    var COLS = 4;
+
+    var PIECE_DEFS = [
+      { color: "red", rank: 7, name: "帥", count: 1, val: 100 },
+      { color: "red", rank: 6, name: "仕", count: 2, val: 45 },
+      { color: "red", rank: 5, name: "相", count: 2, val: 30 },
+      { color: "red", rank: 4, name: "俥", count: 2, val: 22 },
+      { color: "red", rank: 3, name: "傌", count: 2, val: 15 },
+      { color: "red", rank: 2, name: "炮", count: 2, val: 35 },
+      { color: "red", rank: 1, name: "兵", count: 5, val: 12 },
+
+      { color: "black", rank: 7, name: "將", count: 1, val: 100 },
+      { color: "black", rank: 6, name: "士", count: 2, val: 45 },
+      { color: "black", rank: 5, name: "象", count: 2, val: 30 },
+      { color: "black", rank: 4, name: "車", count: 2, val: 22 },
+      { color: "black", rank: 3, name: "馬", count: 2, val: 15 },
+      { color: "black", rank: 2, name: "包", count: 2, val: 35 },
+      { color: "black", rank: 1, name: "卒", count: 5, val: 12 }
+    ];
+
+    var board = [];
+    var humanColor = null;
+    var botColor = null;
+    var isHumanTurn = true;
+    var selectedPos = null;
+    var validTargets = [];
+    var lastHighlight = [];
+    var capturedByHuman = [];
+    var capturedByBot = [];
+    var gameOver = false;
+    var botTimer = null;
+    var aiDifficulty = "normal";
+    var AI_LEVELS = {
+      easy:   { name: "簡單", depth: 0, randomRate: 0.60, flipRate: 0.55 },
+      normal: { name: "普通", depth: 1, randomRate: 0.18, flipRate: 0.32 },
+      hard:   { name: "困難", depth: 3, randomRate: 0.00, flipRate: 0.16 }
+    };
+
+    function initGame() {
+      clearTimeout(botTimer);
+      var savedDifficulty = localStorage.getItem("darkChessDifficulty");
+      if (AI_LEVELS[savedDifficulty]) aiDifficulty = savedDifficulty;
+      var difficultyEl = document.getElementById("difficulty");
+      if (difficultyEl) difficultyEl.value = aiDifficulty;
+      document.getElementById("modal-overlay").style.display = "none";
+
+      var pool = [];
+      for (var d = 0; d < PIECE_DEFS.length; d++) {
+        var def = PIECE_DEFS[d];
+        for (var i = 0; i < def.count; i++) {
+          pool.push({
+            color: def.color,
+            rank: def.rank,
+            name: def.name,
+            val: def.val,
+            revealed: false
+          });
+        }
+      }
+
+      for (var i = pool.length - 1; i > 0; i--) {
+        var j = Math.floor(Math.random() * (i + 1));
+        var temp = pool[i];
+        pool[i] = pool[j];
+        pool[j] = temp;
+      }
+
+      board = [];
+      var idx = 0;
+      for (var r = 0; r < ROWS; r++) {
+        var row = [];
+        for (var c = 0; c < COLS; c++) {
+          row.push(pool[idx++]);
+        }
+        board.push(row);
+      }
+
+      humanColor = null;
+      botColor = null;
+      isHumanTurn = true;
+      selectedPos = null;
+      validTargets = [];
+      lastHighlight = [];
+      capturedByHuman = [];
+      capturedByBot = [];
+      gameOver = false;
+
+      updateStatusUI();
+      renderBoard();
+    }
+
+    function canCapture(attacker, defender) {
+      if (!attacker || !defender || !attacker.revealed || !defender.revealed) return false;
+      if (attacker.color === defender.color) return false;
+      if (attacker.rank === 2) return true;
+      if (attacker.rank === 1 && defender.rank === 7) return true;
+      if (attacker.rank === 7 && defender.rank === 1) return false;
+      return attacker.rank >= defender.rank;
+    }
+
+    function getLegalMoves(r, c) {
+      var piece = board[r][c];
+      if (!piece || !piece.revealed) return [];
+
+      var moves = [];
+      var dirs = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+
+      for (var i = 0; i < dirs.length; i++) {
+        var dr = dirs[i][0];
+        var dc = dirs[i][1];
+        var nr = r + dr;
+        var nc = c + dc;
+        if (nr < 0 || nr >= ROWS || nc < 0 || nc >= COLS) continue;
+
+        var target = board[nr][nc];
+        if (target === null) {
+          moves.push({ r: nr, c: nc, isCapture: false });
+        } else if (target.revealed && piece.rank !== 2 && canCapture(piece, target)) {
+          moves.push({ r: nr, c: nc, isCapture: true });
+        }
+      }
+
+      if (piece.rank === 2) {
+        for (var d = 0; d < dirs.length; d++) {
+          var dr2 = dirs[d][0];
+          var dc2 = dirs[d][1];
+          var nr2 = r + dr2;
+          var nc2 = c + dc2;
+          var screenCount = 0;
+
+          while (nr2 >= 0 && nr2 < ROWS && nc2 >= 0 && nc2 < COLS) {
+            var cellPiece = board[nr2][nc2];
+            if (cellPiece !== null) {
+              screenCount++;
+              if (screenCount === 2) {
+                if (cellPiece.revealed && cellPiece.color !== piece.color) {
+                  moves.push({ r: nr2, c: nc2, isCapture: true });
+                }
+                break;
+              }
+            }
+            nr2 += dr2;
+            nc2 += dc2;
+          }
+        }
+      }
+
+      return moves;
+    }
+
+    function onCellClick(r, c) {
+      if (!isHumanTurn || gameOver) return;
+
+      var clickedPiece = board[r][c];
+
+      if (selectedPos) {
+        var targetMove = null;
+        for (var i = 0; i < validTargets.length; i++) {
+          if (validTargets[i].r === r && validTargets[i].c === c) {
+            targetMove = validTargets[i];
+            break;
+          }
+        }
+        if (targetMove) {
+          executeMove(selectedPos.r, selectedPos.c, r, c);
+          return;
+        }
+      }
+
+      if (clickedPiece && !clickedPiece.revealed) {
+        selectedPos = null;
+        validTargets = [];
+        flipPiece(r, c, true);
+        return;
+      }
+
+      if (clickedPiece && clickedPiece.revealed && clickedPiece.color === humanColor) {
+        if (selectedPos && selectedPos.r === r && selectedPos.c === c) {
+          selectedPos = null;
+          validTargets = [];
+        } else {
+          selectedPos = { r: r, c: c };
+          validTargets = getLegalMoves(r, c);
+        }
+        renderBoard();
+        return;
+      }
+
+      selectedPos = null;
+      validTargets = [];
+      renderBoard();
+    }
+
+    function flipPiece(r, c, byHuman) {
+      var p = board[r][c];
+      p.revealed = true;
+      lastHighlight = [{ r: r, c: c }];
+
+      if (humanColor === null) {
+        if (byHuman) {
+          humanColor = p.color;
+          botColor = (p.color === "red") ? "black" : "red";
+        } else {
+          botColor = p.color;
+          humanColor = (p.color === "red") ? "black" : "red";
+        }
+      }
+
+      endTurn(byHuman);
+    }
+
+    function executeMove(fromR, fromC, toR, toC) {
+      var attacker = board[fromR][fromC];
+      var defender = board[toR][toC];
+
+      if (defender !== null) {
+        if (isHumanTurn) {
+          capturedByHuman.push(defender);
+        } else {
+          capturedByBot.push(defender);
+        }
+      }
+
+      board[toR][toC] = attacker;
+      board[fromR][fromC] = null;
+      lastHighlight = [{ r: fromR, c: fromC }, { r: toR, c: toC }];
+      selectedPos = null;
+      validTargets = [];
+
+      endTurn(isHumanTurn);
+    }
+
+    function endTurn(wasHuman) {
+      updateStatusUI();
+      renderBoard();
+
+      if (checkGameOver()) return;
+
+      isHumanTurn = !wasHuman;
+      updateStatusUI();
+
+      if (!isHumanTurn) {
+        botTimer = setTimeout(executeBotAI, 650);
+      }
+    }
+
+    function changeDifficulty() {
+      var el = document.getElementById("difficulty");
+      aiDifficulty = el.value;
+      localStorage.setItem("darkChessDifficulty", aiDifficulty);
+      updateStatusUI();
+    }
+
+    function cloneBoardState(state) {
+      var copy = [];
+      for (var r = 0; r < ROWS; r++) {
+        copy[r] = [];
+        for (var c = 0; c < COLS; c++) {
+          var p = state[r][c];
+          copy[r][c] = p ? {
+            color: p.color, rank: p.rank, name: p.name,
+            val: p.val, revealed: p.revealed
+          } : null;
+        }
+      }
+      return copy;
+    }
+
+    function getLegalMovesOn(state, r, c) {
+      var original = board;
+      board = state;
+      var result = getLegalMoves(r, c);
+      board = original;
+      return result;
+    }
+
+    function generateMoveActions(state, color) {
+      var actions = [];
+      for (var r = 0; r < ROWS; r++) {
+        for (var c = 0; c < COLS; c++) {
+          var p = state[r][c];
+          if (!p || !p.revealed || p.color !== color) continue;
+          var moves = getLegalMovesOn(state, r, c);
+          for (var i = 0; i < moves.length; i++) {
+            actions.push({
+              fromR: r, fromC: c, toR: moves[i].r, toC: moves[i].c,
+              isCapture: moves[i].isCapture,
+              capturedValue: moves[i].isCapture ? state[moves[i].r][moves[i].c].val : 0
+            });
+          }
+        }
+      }
+      return actions;
+    }
+
+    function applyAction(state, action) {
+      var next = cloneBoardState(state);
+      next[action.toR][action.toC] = next[action.fromR][action.fromC];
+      next[action.fromR][action.fromC] = null;
+      return next;
+    }
+
+    function isThreatenedOn(state, r, c, color) {
+      var enemy = color === "red" ? "black" : "red";
+      var actions = generateMoveActions(state, enemy);
+      for (var i = 0; i < actions.length; i++) {
+        if (actions[i].isCapture && actions[i].toR === r && actions[i].toC === c) return true;
+      }
+      return false;
+    }
+
+    function evaluateBoard(state) {
+      var score = 0;
+      var botAlive = 0;
+      var humanAlive = 0;
+      for (var r = 0; r < ROWS; r++) {
+        for (var c = 0; c < COLS; c++) {
+          var p = state[r][c];
+          if (!p) continue;
+          var sign = p.color === botColor ? 1 : -1;
+          if (p.color === botColor) botAlive++; else humanAlive++;
+          score += sign * p.val * 10;
+          if (p.revealed) {
+            var centerBonus = (c === 1 || c === 2) ? 2 : 0;
+            score += sign * centerBonus;
+            if (isThreatenedOn(state, r, c, p.color)) score -= sign * p.val * 2.4;
+          }
+        }
+      }
+      if (humanAlive === 0) return 100000;
+      if (botAlive === 0) return -100000;
+      var botMobility = generateMoveActions(state, botColor).length;
+      var humanMobility = generateMoveActions(state, humanColor).length;
+      score += (botMobility - humanMobility) * 3;
+      return score;
+    }
+
+    function orderActions(actions) {
+      return actions.sort(function(a, b) {
+        return (b.capturedValue || 0) - (a.capturedValue || 0);
+      });
+    }
+
+    function minimax(state, depth, alpha, beta, maximizing) {
+      if (depth === 0) return evaluateBoard(state);
+      var color = maximizing ? botColor : humanColor;
+      var actions = orderActions(generateMoveActions(state, color));
+      if (actions.length === 0) return evaluateBoard(state) + (maximizing ? -600 : 600);
+
+      if (maximizing) {
+        var maxScore = -Infinity;
+        for (var i = 0; i < actions.length; i++) {
+          var score = minimax(applyAction(state, actions[i]), depth - 1, alpha, beta, false);
+          if (score > maxScore) maxScore = score;
+          if (score > alpha) alpha = score;
+          if (beta <= alpha) break;
+        }
+        return maxScore;
+      }
+
+      var minScore = Infinity;
+      for (var j = 0; j < actions.length; j++) {
+        var score2 = minimax(applyAction(state, actions[j]), depth - 1, alpha, beta, true);
+        if (score2 < minScore) minScore = score2;
+        if (score2 < beta) beta = score2;
+        if (beta <= alpha) break;
+      }
+      return minScore;
+    }
+
+    function scoreRootActions(state, actions, depth) {
+      var scored = [];
+      for (var i = 0; i < actions.length; i++) {
+        var next = applyAction(state, actions[i]);
+        var score = depth > 0
+          ? minimax(next, depth - 1, -Infinity, Infinity, false)
+          : evaluateBoard(next);
+        score += (actions[i].capturedValue || 0) * 4;
+        scored.push({ action: actions[i], score: score });
+      }
+      scored.sort(function(a, b) { return b.score - a.score; });
+      return scored;
+    }
+
+    function chooseHiddenCell(hiddenCells) {
+      var best = [];
+      var bestScore = -Infinity;
+      for (var i = 0; i < hiddenCells.length; i++) {
+        var cell = hiddenCells[i];
+        var score = 0;
+        var dirs = [[-1,0],[1,0],[0,-1],[0,1]];
+        for (var d = 0; d < dirs.length; d++) {
+          var nr = cell.r + dirs[d][0];
+          var nc = cell.c + dirs[d][1];
+          if (nr < 0 || nr >= ROWS || nc < 0 || nc >= COLS) continue;
+          var near = board[nr][nc];
+          if (near && near.revealed) score += near.color === botColor ? 3 : -1;
+        }
+        score += Math.random() * 0.5;
+        if (score > bestScore) { bestScore = score; best = [cell]; }
+        else if (score === bestScore) best.push(cell);
+      }
+      return best[Math.floor(Math.random() * best.length)];
+    }
+
+    function executeBotAI() {
+      if (gameOver) return;
+      var level = AI_LEVELS[aiDifficulty] || AI_LEVELS.normal;
+      var actions = generateMoveActions(board, botColor);
+      var hiddenCells = [];
+      for (var r = 0; r < ROWS; r++) {
+        for (var c = 0; c < COLS; c++) {
+          if (board[r][c] && !board[r][c].revealed) hiddenCells.push({ r: r, c: c });
+        }
+      }
+
+      if (actions.length === 0 && hiddenCells.length === 0) {
+        showEndModal(true, "電腦已無任何棋步可走（困斃），恭喜你獲勝！");
+        return;
+      }
+
+      var captures = actions.filter(function(a) { return a.isCapture; });
+      var shouldFlip = hiddenCells.length > 0 && actions.length > 0 && Math.random() < level.flipRate;
+      if (hiddenCells.length > 0 && actions.length === 0) shouldFlip = true;
+      if (captures.length > 0 && aiDifficulty === "hard") shouldFlip = false;
+
+      if (shouldFlip) {
+        var hidden = chooseHiddenCell(hiddenCells);
+        flipPiece(hidden.r, hidden.c, false);
+        return;
+      }
+
+      if (actions.length > 0) {
+        var scored = scoreRootActions(board, orderActions(actions), level.depth);
+        var chosen;
+        if (Math.random() < level.randomRate) {
+          var range = Math.min(scored.length, aiDifficulty === "easy" ? 6 : 3);
+          chosen = scored[Math.floor(Math.random() * range)].action;
+        } else {
+          chosen = scored[0].action;
+        }
+        executeMove(chosen.fromR, chosen.fromC, chosen.toR, chosen.toC);
+        return;
+      }
+
+      var fallback = chooseHiddenCell(hiddenCells);
+      flipPiece(fallback.r, fallback.c, false);
+    }
+
+    function wouldBeThreatenedAt(tr, tc, myPiece, origR, origC) {
+      var dirs = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+
+      for (var i = 0; i < dirs.length; i++) {
+        var nr = tr + dirs[i][0];
+        var nc = tc + dirs[i][1];
+        if (nr < 0 || nr >= ROWS || nc < 0 || nc >= COLS) continue;
+        if (nr === origR && nc === origC) continue;
+        var enemy = board[nr][nc];
+        if (enemy && enemy.revealed && enemy.color !== myPiece.color && enemy.rank !== 2) {
+          if (canCapture(enemy, myPiece)) return true;
+        }
+      }
+
+      for (var d = 0; d < dirs.length; d++) {
+        var dr = dirs[d][0];
+        var dc = dirs[d][1];
+        var nr2 = tr + dr;
+        var nc2 = tc + dc;
+        var screenCount = 0;
+
+        while (nr2 >= 0 && nr2 < ROWS && nc2 >= 0 && nc2 < COLS) {
+          var cellPiece = (nr2 === origR && nc2 === origC) ? null : board[nr2][nc2];
+          if (cellPiece !== null) {
+            screenCount++;
+            if (screenCount === 2) {
+              if (cellPiece.revealed && cellPiece.color !== myPiece.color && cellPiece.rank === 2) {
+                return true;
+              }
+              break;
+            }
+          }
+          nr2 += dr;
+          nc2 += dc;
+        }
+      }
+
+      return false;
+    }
+
+    function checkGameOver() {
+      if (!humanColor) return false;
+
+      var humanAlive = 0;
+      var botAlive = 0;
+
+      for (var r = 0; r < ROWS; r++) {
+        for (var c = 0; c < COLS; c++) {
+          var p = board[r][c];
+          if (!p) continue;
+          if (p.color === humanColor) humanAlive++;
+          else botAlive++;
+        }
+      }
+
+      if (botAlive === 0) {
+        showEndModal(true, "🎉 你已全殲電腦所有棋子，大獲全勝！");
+        return true;
+      }
+      if (humanAlive === 0) {
+        showEndModal(false, "💀 你的棋子已全數陣亡，再接再厲！");
+        return true;
+      }
+      return false;
+    }
+
+    function showEndModal(win, desc) {
+      gameOver = true;
+      document.getElementById("modal-title").textContent = win ? "🏆 恭喜獲勝！" : "對局結束";
+      document.getElementById("modal-desc").textContent = desc;
+      document.getElementById("modal-overlay").style.display = "flex";
+    }
+
+    function renderBoard() {
+      var boardEl = document.getElementById("board");
+      boardEl.innerHTML = "";
+
+      for (var r = 0; r < ROWS; r++) {
+        for (var c = 0; c < COLS; c++) {
+          var cell = document.createElement("div");
+          cell.className = "cell";
+
+          for (var h = 0; h < lastHighlight.length; h++) {
+            if (lastHighlight[h].r === r && lastHighlight[h].c === c) {
+              cell.classList.add("last-action");
+              break;
+            }
+          }
+
+          for (var t = 0; t < validTargets.length; t++) {
+            if (validTargets[t].r === r && validTargets[t].c === c) {
+              cell.classList.add(validTargets[t].isCapture ? "hint-capture" : "hint-move");
+              break;
+            }
+          }
+
+          var p = board[r][c];
+          if (p !== null) {
+            var pDiv = document.createElement("div");
+            if (!p.revealed) {
+              pDiv.className = "piece hidden";
+            } else {
+              pDiv.className = "piece revealed " + p.color;
+              pDiv.textContent = p.name;
+              if (selectedPos && selectedPos.r === r && selectedPos.c === c) {
+                pDiv.classList.add("selected");
+              }
+            }
+            cell.appendChild(pDiv);
+          }
+
+          cell.onclick = (function(row, col) {
+            return function() { onCellClick(row, col); };
+          })(r, c);
+
+          boardEl.appendChild(cell);
+        }
+      }
+    }
+
+    function updateStatusUI() {
+      var hColorSpan = document.getElementById("human-color");
+      var bColorSpan = document.getElementById("bot-color");
+
+      if (!humanColor) {
+        hColorSpan.textContent = "未定";
+        hColorSpan.className = "";
+        bColorSpan.textContent = "未定";
+        bColorSpan.className = "";
+      } else {
+        hColorSpan.textContent = (humanColor === "red") ? "紅方" : "黑方";
+        hColorSpan.className = (humanColor === "red") ? "side-red" : "side-black";
+        bColorSpan.textContent = (botColor === "red") ? "紅方" : "黑方";
+        bColorSpan.className = (botColor === "red") ? "side-red" : "side-black";
+      }
+
+      document.getElementById("human-left").textContent = "存活 " + (16 - capturedByBot.length) + " 子";
+      document.getElementById("bot-left").textContent = "存活 " + (16 - capturedByHuman.length) + " 子";
+
+      document.getElementById("box-human").classList.toggle("active", isHumanTurn && !gameOver);
+      document.getElementById("box-bot").classList.toggle("active", !isHumanTurn && !gameOver);
+
+      var turnMsg = document.getElementById("turn-msg");
+      if (gameOver) {
+        turnMsg.textContent = "對局結束";
+      } else if (!humanColor) {
+        turnMsg.textContent = "請翻開第一顆棋決定陣營";
+      } else if (isHumanTurn) {
+        turnMsg.textContent = selectedPos ? "請點選綠色圓點移動或紅框吃子" : "輪到你：翻棋或選取己方棋子";
+      } else {
+        turnMsg.textContent = "電腦思考中（" + AI_LEVELS[aiDifficulty].name + "）...";
+      }
+
+      var humanCapStr = "無";
+      if (capturedByHuman.length > 0) {
+        humanCapStr = capturedByHuman.map(function(p) { return p.name; }).join("");
+      }
+      var botCapStr = "無";
+      if (capturedByBot.length > 0) {
+        botCapStr = capturedByBot.map(function(p) { return p.name; }).join("");
+      }
+
+      document.getElementById("cap-by-human").textContent = "你吃掉：" + humanCapStr;
+      document.getElementById("cap-by-bot").textContent = "電腦吃掉：" + botCapStr;
+    }
+
+    function showRules() {
+      alert(
+        "【台灣暗棋規則說明】\n\n" +
+        "1. 陣營決定：開局第一手翻出什麼顏色，你就屬於該方（紅/黑）。\n" +
+        "2. 大小順序：帥(將) > 仕(士) > 相(象) > 俥(車) > 傌(馬) > 炮(包) > 兵(卒)。\n" +
+        "3. 兵卒吃將帥：兵(卒)可吃帥(將)，但帥(將)不可吃兵(卒)。\n" +
+        "4. 炮翻山規則：炮(包)吃子時必須與目標間隔「剛好一顆棋子」（明暗皆可），且可吃任何階級的敵方明棋。\n\n" +
+        "【電腦難度】\n" +
+        "簡單：基礎評分，會刻意保留較多隨機性。\n" +
+        "普通：預判下一手，兼顧吃子、避險與走位。\n" +
+        "困難：3 層 Minimax 搭配 Alpha-Beta 剪枝，預判電腦、玩家、電腦共三層棋步。"
+      );
+    }
+
+    initGame();
+  </script>
+</body>
+</html>
